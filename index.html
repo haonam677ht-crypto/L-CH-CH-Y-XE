@@ -10,10 +10,10 @@
         :root { color-scheme: light; } 
         body { font-family: sans-serif; background-color: #ffffff; color: #333; margin: 0; padding: 15px; }
         .container { max-width: 500px; margin: auto; }
-        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        h2 { text-align: center; color: #333; margin-bottom: 20px; text-transform: uppercase; }
         .form-group { margin-bottom: 12px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; background-color: #fff; color: #000; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; background-color: #fff; color: #000; font-size: 16px; }
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
         .btn-add { background-color: #28a745; color: white; border: none; flex: 2; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .btn-excel { background-color: #007bff; color: white; border: none; flex: 1; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
@@ -23,15 +23,8 @@
         .summary-val { color: #d9534f; }
         
         .section-title { 
-            background: #f4f4f4; 
-            padding: 15px; 
-            margin-top: 25px; 
-            font-weight: bold; 
-            border-bottom: 3px solid #007bff; 
-            text-transform: uppercase;
-            text-align: center; 
-            font-size: 20px; 
-            color: #007bff;
+            background: #f4f4f4; padding: 12px; margin-top: 25px; font-weight: bold; 
+            border-bottom: 3px solid #007bff; text-transform: uppercase; text-align: center; color: #007bff;
         }
 
         .trip-item { border-bottom: 1px solid #eee; padding: 12px 0; position: relative; border-left: 5px solid transparent; }
@@ -43,10 +36,10 @@
         .tag-muon { background: #ffc107; color: #000; }
         .action-btns { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
         .btn-call { background: #28a745; color: white; text-decoration: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; display: flex; align-items: center; }
-        .btn-edit { background: #ffc107; color: black; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
-        .btn-done { background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
+        .btn-edit { background: #ffc107; color: black; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .btn-done { background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .btn-done.is-completed { background: #28a745; }
-        .btn-delete-trip { background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
+        .btn-delete-trip { background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         #hiredDriverFields { display: none; background: #fff9e6; padding: 10px; border-radius: 5px; border: 1px dashed #ffc107; margin-top: 5px; }
     </style>
 </head>
@@ -55,6 +48,7 @@
 <div class="container">
     <h2>LỊCH CHẠY XE</h2>
     <input type="hidden" id="editKey">
+    
     <div class="form-group"><label>Thời gian rước</label><input type="datetime-local" id="time"></div>
     <div class="form-group"><label>Điểm đi</label><input type="text" id="from"></div>
     <div class="form-group"><label>Điểm đến</label><input type="text" id="to"></div>
@@ -78,8 +72,10 @@
             <option value="Tài xế mướn">Tài xế mướn</option>
         </select>
     </div>
+    
     <div id="hiredDriverFields">
-        <div class="form-group"><label>Tên/SĐT Tài xế mướn</label><input type="text" id="hiredDriverName"></div>
+        <div class="form-group"><label>Tên tài xế mướn</label><input type="text" id="hiredDriverName"></div>
+        <div class="form-group"><label>Số điện thoại tài xế</label><input type="text" id="hiredDriverPhone"></div>
         <div class="form-group"><label>Tiền thuê tài xế</label><input type="number" id="driverCost"></div>
     </div>
     
@@ -95,11 +91,12 @@
         <div class="summary-item">Chi phí: <span id="totalCost" class="summary-val">0</span></div>
         <div class="summary-item">Lợi nhuận: <span id="totalProfit" class="summary-val">0</span></div>
     </div>
+    
     <hr>
     <div id="displayArea">
         <div class="section-title">HÔM NAY</div><div id="todayList"></div>
         <div class="section-title">SẮP TỚI</div><div id="upcomingList"></div>
-        <div class="section-title">ĐÃ QUA</div><div id="pastList"></div>
+        <div class="section-title">ĐÃ QUA (TỪ 01/05)</div><div id="pastList"></div>
     </div>
 </div>
 
@@ -150,10 +147,11 @@
             road: Number(document.getElementById('road').value) || 0,
             driverType: document.getElementById('driverType').value,
             hiredDriverName: document.getElementById('hiredDriverName').value || "",
+            hiredDriverPhone: document.getElementById('hiredDriverPhone').value || "",
             driverCost: Number(document.getElementById('driverCost').value) || 0,
             status: key ? (trips[key].status || "pending") : "pending"
         };
-        if(!tripData.time || !tripData.from) return alert("Thiếu thông tin!");
+        if(!tripData.time || !tripData.from) return alert("Bác điền thiếu thông tin rồi!");
         if(key) db.ref('trips/' + key).update(tripData);
         else db.ref('trips').push(tripData);
         resetForm();
@@ -191,14 +189,14 @@
                         <strong>${trip.from} ➝ ${trip.to}</strong>
                         <p>⏰ <span class="time-highlight">${formatDateTime(trip.time)}</span></p>
                         <p>📞 Khách: ${trip.phone}</p>
-                        ${trip.driverType === 'Tài xế mướn' ? `<p>👤 Tài xế: ${trip.hiredDriverName}</p>` : ''}
+                        ${trip.driverType === 'Tài xế mướn' ? `<p>👤 TX Mướn: ${trip.hiredDriverName} - ${trip.hiredDriverPhone}</p>` : ''}
                         <p>💰 Thu: ${formatNumber(trip.price)}đ | 📉 Chi: ${formatNumber(totalTripCost)}đ</p>
                         <p>💎 Thực lãi: <span style="color:#28a745; font-weight:bold;">${formatNumber(netProfit)}đ</span></p>
                         <span class="driver-tag ${trip.driverType === 'Tài xế nhà' ? 'tag-nha' : 'tag-muon'}">${trip.driverType}</span>
                         <div class="action-btns">
-                            <a href="tel:${trip.phone}" class="btn-call">📞 GỌI</a>
+                            <a href="tel:${trip.phone}" class="btn-call">📞 GỌI KHÁCH</a>
                             <button class="btn-edit" onclick="editTrip('${key}')">✏️ SỬA</button>
-                            <button class="btn-done ${isDone ? 'is-completed' : ''}" onclick="toggleComplete('${key}')">${isDone ? 'HOÀN TẤT' : 'XỬ LÝ'}</button>
+                            <button class="btn-done ${isDone ? 'is-completed' : ''}" onclick="toggleComplete('${key}')">${isDone ? 'XONG' : 'XỬ LÝ'}</button>
                             <button class="btn-delete-trip" onclick="deleteTrip('${key}')">🗑️</button>
                         </div>
                     </div>
@@ -229,6 +227,7 @@
         document.getElementById('gasPrice').value = t.gasPrice || 24220;
         document.getElementById('driverType').value = t.driverType;
         document.getElementById('hiredDriverName').value = t.hiredDriverName || "";
+        document.getElementById('hiredDriverPhone').value = t.hiredDriverPhone || "";
         document.getElementById('driverCost').value = t.driverCost || 0;
         toggleDriverFields();
         document.getElementById('mainBtn').innerText = "CẬP NHẬT";
@@ -238,56 +237,37 @@
     function resetForm() {
         document.getElementById('editKey').value = '';
         document.getElementById('mainBtn').innerText = "THÊM CHUYẾN";
-        ['time', 'from', 'to', 'phone', 'note', 'price', 'km', 'road', 'hiredDriverName', 'driverCost'].forEach(id => document.getElementById(id).value = '');
+        ['time', 'from', 'to', 'phone', 'note', 'price', 'km', 'road', 'hiredDriverName', 'hiredDriverPhone', 'driverCost'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('gasPrice').value = 24220;
         document.getElementById('driverType').value = "Tài xế nhà";
         toggleDriverFields();
     }
 
-    // PHƯƠNG PHÁP XUẤT CSV CÓ CHỮ KÝ BOM (FIX LỖI TIẾNG VIỆT & DÍNH CỘT)
     function exportToExcel() {
         const sortedData = Object.values(trips).sort((a, b) => new Date(a.time) - new Date(b.time));
         if(!sortedData.length) return alert("Không có dữ liệu!");
-
-        // Tiêu đề cột
-        let csvContent = "Trạng Thái,Thời Gian,Điểm Đi,Điểm Đến,SĐT Khách,Tài Xế Mướn,Doanh Thu,Số KM,Tiền Xăng,Cầu Đường,Tiền Thuê Tài Xế,Thực Lãi,Ghi Chú\n";
-
+        let csvContent = "Trạng Thái,Thời Gian,Điểm Đi,Điểm Đến,SĐT Khách,TX Mướn,SĐT TX,Doanh Thu,Số KM,Tiền Xăng,Cầu Đường,Tiền Thuê TX,Thực Lãi,Ghi Chú\n";
         sortedData.forEach(item => {
             const fuel = Math.round((item.km / 15) * (item.gasPrice || 24220));
             const totalTripCost = fuel + Number(item.road) + Number(item.driverCost || 0);
             const row = [
                 item.status === "completed" ? "Xong" : "Chờ",
                 formatDateTime(item.time),
-                `"${item.from}"`,
-                `"${item.to}"`,
-                `"${item.phone}"`,
-                `"${item.hiredDriverName || ''}"`,
-                item.price,
-                item.km,
-                fuel,
-                item.road,
-                item.driverCost || 0,
-                item.price - totalTripCost,
-                `"${(item.note || '').replace(/\n/g, ' ')}"`
+                `"${item.from}"`, `"${item.to}"`, `"${item.phone}"`, `"${item.hiredDriverName || ''}"`, `"${item.hiredDriverPhone || ''}"`,
+                item.price, item.km, fuel, item.road, item.driverCost || 0, (item.price - totalTripCost), `"${(item.note || '').replace(/\n/g, ' ')}"`
             ];
             csvContent += row.join(",") + "\n";
         });
-
-        // Chèn mã BOM (\ufeff) vào đầu file để Excel hiểu là UTF-8
         const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", "Bao_Cao_Chay_Xe.csv");
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
+        link.href = URL.createObjectURL(blob);
+        link.download = "Bao_Cao_Chay_Xe_T5.csv";
         link.click();
-        document.body.removeChild(link);
     }
 
     function deleteOldData() {
         if(confirm("Xoá dữ liệu tháng cũ?")) {
-            const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+            const firstDay = "2026-05-01";
             for (let key in trips) { if (trips[key].time < firstDay) db.ref('trips/' + key).remove(); }
         }
     }
