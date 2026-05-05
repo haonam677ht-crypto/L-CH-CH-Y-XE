@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Lịch Chạy Xe</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root { color-scheme: light; } 
+        body { font-family: sans-serif; background-color: #ffffff; color: #333; margin: 0; padding: 15px; }
+        .container { max-width: 500px; margin: auto; }
+        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; background-color: #fff; color: #000; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-add { background-color: #28a745; color: white; border: none; flex: 2; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .btn-excel { background-color: #007bff; color: white; border: none; flex: 1; padding: 12px; border-radius: 5px; cursor: pointer; }
+        .btn-delete { background-color: #dc3545; color: white; border: none; width: 100%; margin-top: 10px; padding: 10px; border-radius: 5px; cursor: pointer; }
+        .summary-box { background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .summary-item { font-size: 14px; font-weight: bold; }
+        .summary-val { color: #d9534f; }
+        .section-title { background: #f4f4f4; padding: 8px; margin-top: 20px; font-weight: bold; border-left: 4px solid #007bff; text-transform: uppercase; }
+        .trip-item { border-bottom: 1px solid #eee; padding: 12px 0; position: relative; }
+        .trip-info p { margin: 4px 0; font-size: 13px; color: #444; }
+        .time-highlight { color: #d9534f; font-size: 16px; font-weight: 800; background: #fff0f0; padding: 2px 6px; border-radius: 4px; }
+        .past-trip { opacity: 0.6; filter: grayscale(50%); }
+        .completed-trip { border-left: 5px solid #28a745; background-color: #f0fff4; opacity: 0.8; }
+        .driver-tag { font-size: 11px; padding: 2px 6px; border-radius: 3px; color: white; font-weight: bold; margin-top: 5px; display: inline-block; }
+        .tag-nha { background: #28a745; }
+        .tag-muon { background: #ffc107; color: #000; }
+        .action-btns { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .btn-call { background: #28a745; color: white; text-decoration: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; display: flex; align-items: center; }
+        .btn-edit { background: #ffc107; color: black; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
+        .btn-done { background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
+        .btn-done.is-completed { background: #28a745; }
+        .note-detail { font-style: italic; color: #666; font-size: 12px !important; }
+        #hiredDriverFields { display: none; background: #fff9e6; padding: 10px; border-radius: 5px; border: 1px dashed #ffc107; margin-top: 5px; }
+        
+        /* UX: Định dạng tiền tệ giả lập */
+        .money-preview { font-size: 11px; color: #007bff; display: block; margin-top: 2px; height: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>LỊCH CHẠY XE</h2>
+    <input type="hidden" id="editKey">
+    <div class="form-group"><label>Thời gian rước</label><input type="datetime-local" id="time"></div>
+    
+    <div class="form-group">
+        <label>Điểm đi</label>
+        <input type="text" id="from" list="places">
+    </div>
+    <div class="form-group">
+        <label>Điểm đến</label>
+        <input type="text" id="to" list="places">
+    </div>
+    <datalist id="places">
+        <option value="Sân Bay Tân Sơn Nhất">
+        <option value="Sân Bay Cam Ranh">
+        <option value="Bệnh Viện Chợ Rẫy">
+        <option value="Vũng Tàu">
+        <option value="Đà Lạt">
+    </datalist>
+
+    <div class="form-group"><label>Thông tin khách (SĐT/Tên)</label><input type="text" id="phone"></div>
+    <div class="form-group"><label>Ghi chú</label><textarea id="note" rows="2"></textarea></div>
+    
+    <div style="display: flex; gap: 10px;">
+        <div class="form-group" style="flex: 1;">
+            <label>Giá chuyến</label>
+            <input type="number" id="price" oninput="showMoney('pricePreview', this.value)">
+            <span id="pricePreview" class="money-preview"></span>
+        </div>
+        <div class="form-group" style="flex: 1;"><label>Số KM</label><input type="number" id="km"></div>
+    </div>
+    
+    <div style="display: flex; gap: 10px;">
+        <div class="form-group" style="flex: 1;"><label>Giá xăng/lít</label><input type="number" id="gasPrice" value="24220"></div>
+        <div class="form-group" style="flex: 1;">
+            <label>Phí cầu đường</label>
+            <input type="number" id="road" oninput="showMoney('roadPreview', this.value)">
+            <span id="roadPreview" class="money-preview"></span>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label>Loại tài xế</label>
+        <select id="driverType" onchange="toggleDriverFields()">
+            <option value="Tài xế nhà">Tài xế nhà</option>
+            <option value="Tài xế mướn">Tài xế mướn</option>
+        </select>
+    </div>
+    <div id="hiredDriverFields">
+        <div class="form-group">
+            <label>Tiền tài xế mướn</label>
+            <input type="number" id="driverCost" oninput="showMoney('costPreview', this.value)">
+            <span id="costPreview" class="money-preview"></span>
+        </div>
+    </div>
+    
+    <div class="btn-group">
+        <button id="mainBtn" class="btn-add" onclick="saveTrip()">THÊM CHUYẾN</button>
+        <button class="btn-excel" onclick="exportExcel()">XUẤT EXCEL</button>
+    </div>
+    <button class="btn-delete" onclick="deleteOldData()">Xoá dữ liệu tháng cũ</button>
+    
+    <div class="summary-box">
+        <div class="summary-item">Tổng chuyến: <span id="totalTrips" class="summary-val">0</span></div>
+        <div class="summary-item">Doanh thu: <span id="totalRev" class="summary-val">0</span></div>
+        <div class="summary-item">Chi phí: <span id="totalCost" class="summary-val">0</span></div>
+        <div class="summary-item">Lợi nhuận: <span id="totalProfit" class="summary-val">0</span></div>
+    </div>
+    <hr>
+    <div id="displayArea">
+        <div class="section-title">HÔM NAY</div><div id="todayList"></div>
+        <div class="section-title">SẮP TỚI</div><div id="upcomingList"></div>
+        <div class="section-title">ĐÃ QUA</div><div id="pastList"></div>
+    </div>
+</div>
+
+<script>
+    // GIỮ NGUYÊN CẤU HÌNH FIREBASE CỦA BÁC
+    const firebaseConfig = {
+        apiKey: "AIzaSyAuZTf_5Z3VgnM1rumgsqGBb-O7-Gn4oxE",
+        authDomain: "nha-xe-ee5e8.firebaseapp.com",
+        databaseURL: "https://nha-xe-ee5e8-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "nha-xe-ee5e8",
+        storageBucket: "nha-xe-ee5e8.firebasestorage.app",
+        messagingSenderId: "460075860243",
+        appId: "1:460075860243:web:f0826865398e2ddcf05ae6"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let trips = {};
+
+    db.ref('trips').on('value', (snapshot) => {
+        trips = snapshot.val() || {};
+        renderTrips();
+    });
+
+    // UX: Hàm hiển thị số tiền có dấu phẩy khi đang gõ
+    function showMoney(id, val) {
+        document.getElementById(id).innerText = val ? Number(val).toLocaleString() + " đ" : "";
+    }
+
+    function toggleDriverFields() {
+        const type = document.getElementById('driverType').value;
+        document.getElementById('hiredDriverFields').style.display = (type === "Tài xế mướn") ? "block" : "none";
+    }
+
+    function formatDateTime(dtStr) {
+        if(!dtStr) return "";
+        const d = new Date(dtStr);
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    }
+
+    // Chỉnh sửa: Thêm logic lưu trạng thái status
+    function saveTrip() {
+        const key = document.getElementById('editKey').value;
+        const tripData = {
+            time: document.getElementById('time').value,
+            from: document.getElementById('from').value,
+            to: document.getElementById('to').value,
+            phone: document.getElementById('phone').value,
+            note: document.getElementById('note').value || "",
+            price: Number(document.getElementById('price').value) || 0,
+            km: Number(document.getElementById('km').value) || 0,
+            gasPrice: Number(document.getElementById('gasPrice').value) || 0,
+            road: Number(document.getElementById('road').value) || 0,
+            driverType: document.getElementById('driverType').value,
+            driverCost: Number(document.getElementById('driverCost').value) || 0,
+            status: key ? (trips[key].status || "pending") : "pending"
+        };
+        if(!tripData.time || !tripData.from) return alert("Vui lòng nhập ngày và điểm đi!");
+        if(key) db.ref('trips/' + key).update(tripData);
+        else db.ref('trips').push(tripData);
+        resetForm();
+    }
+
+    // Chức năng mới: Đánh dấu hoàn tất
+    function toggleComplete(key) {
+        const newStatus = trips[key].status === "completed" ? "pending" : "completed";
+        db.ref('trips/' + key).update({ status: newStatus });
+    }
+
+    function renderTrips() {
+        const lists = { today: document.getElementById('todayList'), upcoming: document.getElementById('upcomingList'), past: document.getElementById('pastList') };
+        Object.values(lists).forEach(l => l.innerHTML = '');
+        let totalRev = 0, totalCost = 0, tripCount = 0;
+        const now = new Date();
+        const nowDayStr = now.toLocaleDateString('en-CA');
+
+        const sortedKeys = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time));
+
+        sortedKeys.forEach(key => {
+            const trip = trips[key];
+            const isDone = trip.status === "completed";
+            const tripDayStr = trip.time.split('T')[0];
+            const fuelCost = Math.round((trip.km / 15) * trip.gasPrice);
+            const totalTripCost = fuelCost + Number(trip.road) + Number(trip.driverCost || 0);
+            
+            tripCount++;
+            totalRev += Number(trip.price);
+            totalCost += totalTripCost;
+
+            const html = `
+                <div class="trip-item ${tripDayStr < nowDayStr ? 'past-trip' : ''} ${isDone ? 'completed-trip' : ''}">
+                    <div class="trip-info">
+                        <strong>${isDone ? '✅ ' : ''}${trip.from} ➝ ${trip.to}</strong> (${trip.km} km)
+                        <p>⏰ Rước lúc: <span class="time-highlight">${formatDateTime(trip.time)}</span></p>
+                        <p>📞 Khách: ${trip.phone}</p>
+                        <p>💰 Giá: ${trip.price.toLocaleString()}đ | Chi phí: <b>${totalTripCost.toLocaleString()}đ</b></p>
+                        <p class="note-detail">(Xăng: ${fuelCost.toLocaleString()} - Cầu đường: ${trip.road.toLocaleString()})</p>
+                        ${trip.note ? `<p class="note-detail">📝 Ghi chú: ${trip.note}</p>` : ''}
+                        <span class="driver-tag ${trip.driverType === 'Tài xế nhà' ? 'tag-nha' : 'tag-muon'}">${trip.driverType}</span>
+                        <div class="action-btns">
+                            <a href="tel:${trip.phone.replace(/\D/g,'')}" class="btn-call">📞 GỌI</a>
+                            <button class="btn-edit" onclick="editTrip('${key}')">✏️ SỬA</button>
+                            <button class="btn-done ${isDone ? 'is-completed' : ''}" onclick="toggleComplete('${key}')">
+                                ${isDone ? 'HOÀN TẤT' : 'XONG?'}
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+
+            if (tripDayStr === nowDayStr) lists.today.innerHTML += html;
+            else if (tripDayStr > nowDayStr) lists.upcoming.innerHTML += html;
+            else lists.past.innerHTML += html;
+        });
+
+        document.getElementById('totalTrips').innerText = tripCount;
+        document.getElementById('totalRev').innerText = totalRev.toLocaleString() + "đ";
+        document.getElementById('totalCost').innerText = totalCost.toLocaleString() + "đ";
+        document.getElementById('totalProfit').innerText = (totalRev - totalCost).toLocaleString() + "đ";
+    }
+
+    function editTrip(key) {
+        const trip = trips[key];
+        document.getElementById('editKey').value = key;
+        document.getElementById('time').value = trip.time;
+        document.getElementById('from').value = trip.from;
+        document.getElementById('to').value = trip.to;
+        document.getElementById('phone').value = trip.phone;
+        document.getElementById('note').value = trip.note;
+        document.getElementById('price').value = trip.price;
+        document.getElementById('km').value = trip.km;
+        document.getElementById('gasPrice').value = trip.gasPrice;
+        document.getElementById('road').value = trip.road;
+        document.getElementById('driverType').value = trip.driverType;
+        document.getElementById('driverCost').value = trip.driverCost || 0;
+        
+        // Cập nhật lại các dòng preview tiền khi bấm sửa
+        showMoney('pricePreview', trip.price);
+        showMoney('roadPreview', trip.road);
+        showMoney('costPreview', trip.driverCost);
+
+        toggleDriverFields();
+        document.getElementById('mainBtn').innerText = "CẬP NHẬT CHUYẾN";
+        window.scrollTo(0,0);
+    }
+
+    function resetForm() {
+        document.getElementById('editKey').value = '';
+        document.getElementById('mainBtn').innerText = "THÊM CHUYẾN";
+        ['time', 'from', 'to', 'phone', 'note', 'price', 'km', 'road', 'driverCost'].forEach(id => document.getElementById(id).value = '');
+        ['pricePreview', 'roadPreview', 'costPreview'].forEach(id => document.getElementById(id).innerText = '');
+    }
+
+    function exportExcel() {
+        const rawData = Object.values(trips);
+        if(!rawData.length) return alert("Không có dữ liệu!");
+
+        let totalRevenue = 0;
+        let totalExpense = 0;
+
+        const formattedData = rawData.map(item => {
+            const fuelCost = Math.round((item.km / 15) * item.gasPrice);
+            const totalTripCost = fuelCost + Number(item.road) + Number(item.driverCost || 0);
+            totalRevenue += Number(item.price);
+            totalExpense += totalTripCost;
+
+            return {
+                "Trạng Thái": item.status === "completed" ? "Đã xong" : "Chưa đi",
+                "Thời Gian": formatDateTime(item.time),
+                "Điểm Đi": item.from,
+                "Điểm Đến": item.to,
+                "Khách Hàng": item.phone,
+                "Doanh Thu": item.price,
+                "Số KM": item.km,
+                "Tổng Chi Phí": totalTripCost,
+                "Cầu Đường": item.road,
+                "Tiền Xăng": fuelCost,
+                "Loại Tài Xế": item.driverType,
+                "Ghi Chú": item.note || ""
+            };
+        });
+
+        formattedData.push({});
+        formattedData.push({ "Khách Hàng": "TỔNG DOANH THU:", "Doanh Thu": totalRevenue });
+        formattedData.push({ "Khách Hàng": "TỔNG CHI PHÍ:", "Doanh Thu": totalExpense });
+        formattedData.push({ "Khách Hàng": "LỢI NHUẬN:", "Doanh Thu": totalRevenue - totalExpense });
+
+        const ws = XLSX.utils.json_to_sheet(formattedData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "LichChayXe");
+
+        try {
+            XLSX.writeFile(wb, "Bao_Cao_Nha_Xe.xlsx");
+        } catch (e) {
+            alert("Lỗi xuất file: " + e.message);
+        }
+    }
+
+    function deleteOldData() {
+        if(confirm("Xoá dữ liệu tháng cũ?")) {
+            const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+            for (let key in trips) {
+                if (trips[key].time < firstDay) db.ref('trips/' + key).remove();
+            }
+        }
+    }
+</script>
+</body>
+</html>
