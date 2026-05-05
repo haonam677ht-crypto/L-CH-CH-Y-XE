@@ -22,16 +22,16 @@
         .summary-item { font-size: 14px; font-weight: bold; }
         .summary-val { color: #d9534f; }
         
-        /* CHỈNH SỬA TIÊU ĐỀ: TO HƠN VÀ NẰM GIỮA */
+        /* TIÊU ĐỀ: TO HƠN VÀ NẰM GIỮA TRANG */
         .section-title { 
             background: #f4f4f4; 
-            padding: 12px; 
+            padding: 15px; 
             margin-top: 25px; 
             font-weight: bold; 
             border-bottom: 3px solid #007bff; 
             text-transform: uppercase;
-            text-align: center; /* Nằm giữa */
-            font-size: 20px;    /* Chữ to hơn */
+            text-align: center; 
+            font-size: 22px; 
             color: #007bff;
         }
 
@@ -245,11 +245,14 @@
         toggleDriverFields();
     }
 
+    // PHẦN SỬA LỖI FONT EXCEL (UTF-8 WITH BOM)
     function exportCSV() {
         const sortedData = Object.values(trips).sort((a, b) => new Date(a.time) - new Date(b.time));
         if(!sortedData.length) return alert("Không có dữ liệu!");
 
-        let csvContent = "sep=;\n\uFEFF"; 
+        // Thêm BOM (Byte Order Mark) để Excel nhận diện tiếng Việt UTF-8
+        let csvContent = "\uFEFF"; 
+        csvContent += "sep=;\n"; // Chỉ định dấu chấm phẩy là ngăn cách cột
         csvContent += "Trạng Thái;Thời Gian;Điểm Đi;Điểm Đến;Khách;Tài Xế Mướn;Doanh Thu;Số KM;Tiền Xăng;Cầu Đường;Tiền Thuê Tài Xế;Thực Lãi;Ghi chú\n";
 
         sortedData.forEach(item => {
