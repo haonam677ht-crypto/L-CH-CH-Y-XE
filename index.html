@@ -21,7 +21,20 @@
         .summary-box { background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .summary-item { font-size: 14px; font-weight: bold; }
         .summary-val { color: #d9534f; }
-        .section-title { background: #f4f4f4; padding: 8px; margin-top: 20px; font-weight: bold; border-left: 4px solid #007bff; text-transform: uppercase; }
+        
+        /* CHỈNH SỬA TIÊU ĐỀ: TO HƠN VÀ NẰM GIỮA */
+        .section-title { 
+            background: #f4f4f4; 
+            padding: 12px; 
+            margin-top: 25px; 
+            font-weight: bold; 
+            border-bottom: 3px solid #007bff; 
+            text-transform: uppercase;
+            text-align: center; /* Nằm giữa */
+            font-size: 20px;    /* Chữ to hơn */
+            color: #007bff;
+        }
+
         .trip-item { border-bottom: 1px solid #eee; padding: 12px 0; position: relative; border-left: 5px solid transparent; }
         .trip-info p { margin: 4px 0; font-size: 13px; color: #444; }
         .time-highlight { color: #d9534f; font-size: 16px; font-weight: 800; background: #fff0f0; padding: 2px 6px; border-radius: 4px; }
@@ -66,7 +79,6 @@
             <option value="Tài xế mướn">Tài xế mướn</option>
         </select>
     </div>
-    
     <div id="hiredDriverFields">
         <div class="form-group"><label>Tên/SĐT Tài xế mướn</label><input type="text" id="hiredDriverName"></div>
         <div class="form-group"><label>Tiền thuê tài xế</label><input type="number" id="driverCost"></div>
@@ -117,9 +129,7 @@
         document.getElementById('hiredDriverFields').style.display = (type === "Tài xế mướn") ? "block" : "none";
     }
 
-    function formatNumber(num) {
-        return num.toLocaleString('vi-VN');
-    }
+    function formatNumber(num) { return num.toLocaleString('vi-VN'); }
 
     function formatDateTime(dtStr) {
         if(!dtStr) return "";
@@ -164,7 +174,6 @@
         Object.values(lists).forEach(l => l.innerHTML = '');
         let totalRev = 0, totalCost = 0, tripCount = 0;
         const nowDayStr = new Date().toLocaleDateString('en-CA');
-
         const sortedKeys = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time));
 
         sortedKeys.forEach(key => {
@@ -240,8 +249,8 @@
         const sortedData = Object.values(trips).sort((a, b) => new Date(a.time) - new Date(b.time));
         if(!sortedData.length) return alert("Không có dữ liệu!");
 
-        let csvContent = "\uFEFF"; 
-        csvContent += "Trạng Thái,Thời Gian,Điểm Đi,Điểm Đến,Khách,Tài Xế Mướn,Doanh Thu,Số KM,Tiền Xăng,Cầu Đường,Tiền Thuê Tài Xế,Thực Lãi,Ghi chú\n";
+        let csvContent = "sep=;\n\uFEFF"; 
+        csvContent += "Trạng Thái;Thời Gian;Điểm Đi;Điểm Đến;Khách;Tài Xế Mướn;Doanh Thu;Số KM;Tiền Xăng;Cầu Đường;Tiền Thuê Tài Xế;Thực Lãi;Ghi chú\n";
 
         sortedData.forEach(item => {
             const fuel = Math.round((item.km / 15) * (item.gasPrice || 24220));
@@ -251,7 +260,7 @@
                 formatDateTime(item.time),
                 `"${item.from}"`, `"${item.to}"`, `"${item.phone}"`, `"${item.hiredDriverName || ''}"`,
                 item.price, item.km, fuel, item.road, item.driverCost || 0, (item.price - totalTripCost), `"${item.note || ''}"`
-            ].join(",");
+            ].join(";"); 
             csvContent += row + "\n";
         });
 
@@ -263,10 +272,9 @@
     }
 
     function deleteOldData() {
-        if(confirm("Xoá toàn bộ dữ liệu của các tháng trước tháng này?")) {
-            const now = new Date();
-            const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-            for (let key in trips) { if (trips[key].time < firstDayCurrentMonth) db.ref('trips/' + key).remove(); }
+        if(confirm("Xoá dữ liệu tháng cũ?")) {
+            const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+            for (let key in trips) { if (trips[key].time < firstDay) db.ref('trips/' + key).remove(); }
         }
     }
 </script>
