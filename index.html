@@ -19,7 +19,7 @@
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
         .btn-add { background-color: #28a745; color: white; border: none; flex: 2; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .btn-excel { background-color: #007bff; color: white; border: none; flex: 1; padding: 12px; border-radius: 5px; cursor: pointer; }
-        .btn-delete { background-color: #dc3545; color: white; border: none; width: 100%; margin-top: 10px; padding: 10px; border-radius: 5px; cursor: pointer; }
+        .btn-delete-old { background-color: #dc3545; color: white; border: none; width: 100%; margin-top: 10px; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .summary-box { background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .summary-item { font-size: 14px; font-weight: bold; }
         .summary-val { color: #d9534f; }
@@ -37,10 +37,9 @@
         .btn-edit { background: #ffc107; color: black; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
         .btn-done { background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
         .btn-done.is-completed { background: #28a745; }
+        .btn-delete-trip { background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
         .note-detail { font-style: italic; color: #666; font-size: 12px !important; }
         #hiredDriverFields { display: none; background: #fff9e6; padding: 10px; border-radius: 5px; border: 1px dashed #ffc107; margin-top: 5px; }
-        
-        /* UX: Định dạng tiền tệ giả lập */
         .money-preview { font-size: 11px; color: #007bff; display: block; margin-top: 2px; height: 14px; }
     </style>
 </head>
@@ -50,21 +49,10 @@
     <h2>LỊCH CHẠY XE</h2>
     <input type="hidden" id="editKey">
     <div class="form-group"><label>Thời gian rước</label><input type="datetime-local" id="time"></div>
-    
-    <div class="form-group">
-        <label>Điểm đi</label>
-        <input type="text" id="from" list="places">
-    </div>
-    <div class="form-group">
-        <label>Điểm đến</label>
-        <input type="text" id="to" list="places">
-    </div>
+    <div class="form-group"><label>Điểm đi</label><input type="text" id="from" list="places"></div>
+    <div class="form-group"><label>Điểm đến</label><input type="text" id="to" list="places"></div>
     <datalist id="places">
-        <option value="Sân Bay Tân Sơn Nhất">
-        <option value="Sân Bay Cam Ranh">
-        <option value="Bệnh Viện Chợ Rẫy">
-        <option value="Vũng Tàu">
-        <option value="Đà Lạt">
+        <option value="Sân Bay Tân Sơn Nhất"><option value="Bệnh Viện Chợ Rẫy"><option value="Vũng Tàu"><option value="Đà Lạt">
     </datalist>
 
     <div class="form-group"><label>Thông tin khách (SĐT/Tên)</label><input type="text" id="phone"></div>
@@ -107,7 +95,7 @@
         <button id="mainBtn" class="btn-add" onclick="saveTrip()">THÊM CHUYẾN</button>
         <button class="btn-excel" onclick="exportExcel()">XUẤT EXCEL</button>
     </div>
-    <button class="btn-delete" onclick="deleteOldData()">Xoá dữ liệu tháng cũ</button>
+    <button class="btn-delete-old" onclick="deleteOldData()">Xoá dữ liệu tháng cũ</button>
     
     <div class="summary-box">
         <div class="summary-item">Tổng chuyến: <span id="totalTrips" class="summary-val">0</span></div>
@@ -124,7 +112,6 @@
 </div>
 
 <script>
-    // GIỮ NGUYÊN CẤU HÌNH FIREBASE CỦA BÁC
     const firebaseConfig = {
         apiKey: "AIzaSyAuZTf_5Z3VgnM1rumgsqGBb-O7-Gn4oxE",
         authDomain: "nha-xe-ee5e8.firebaseapp.com",
@@ -144,7 +131,6 @@
         renderTrips();
     });
 
-    // UX: Hàm hiển thị số tiền có dấu phẩy khi đang gõ
     function showMoney(id, val) {
         document.getElementById(id).innerText = val ? Number(val).toLocaleString() + " đ" : "";
     }
@@ -160,7 +146,6 @@
         return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
     }
 
-    // Chỉnh sửa: Thêm logic lưu trạng thái status
     function saveTrip() {
         const key = document.getElementById('editKey').value;
         const tripData = {
@@ -183,10 +168,16 @@
         resetForm();
     }
 
-    // Chức năng mới: Đánh dấu hoàn tất
     function toggleComplete(key) {
         const newStatus = trips[key].status === "completed" ? "pending" : "completed";
         db.ref('trips/' + key).update({ status: newStatus });
+    }
+
+    // TÍNH NĂNG MỚI: XOÁ TỪNG CHUYẾN
+    function deleteTrip(key) {
+        if(confirm("Bạn có chắc chắn muốn xoá chuyến này không?")) {
+            db.ref('trips/' + key).remove();
+        }
     }
 
     function renderTrips() {
@@ -225,6 +216,7 @@
                             <button class="btn-done ${isDone ? 'is-completed' : ''}" onclick="toggleComplete('${key}')">
                                 ${isDone ? 'HOÀN TẤT' : 'XONG?'}
                             </button>
+                            <button class="btn-delete-trip" onclick="deleteTrip('${key}')">🗑️ XOÁ</button>
                         </div>
                     </div>
                 </div>`;
@@ -254,12 +246,9 @@
         document.getElementById('road').value = trip.road;
         document.getElementById('driverType').value = trip.driverType;
         document.getElementById('driverCost').value = trip.driverCost || 0;
-        
-        // Cập nhật lại các dòng preview tiền khi bấm sửa
         showMoney('pricePreview', trip.price);
         showMoney('roadPreview', trip.road);
         showMoney('costPreview', trip.driverCost);
-
         toggleDriverFields();
         document.getElementById('mainBtn').innerText = "CẬP NHẬT CHUYẾN";
         window.scrollTo(0,0);
@@ -273,48 +262,44 @@
     }
 
     function exportExcel() {
-        const rawData = Object.values(trips);
+        const rawData = Object.keys(trips).map(k => trips[k]).sort((a, b) => new Date(a.time) - new Date(b.time));
         if(!rawData.length) return alert("Không có dữ liệu!");
 
-        let totalRevenue = 0;
-        let totalExpense = 0;
-
-        const formattedData = rawData.map(item => {
-            const fuelCost = Math.round((item.km / 15) * item.gasPrice);
-            const totalTripCost = fuelCost + Number(item.road) + Number(item.driverCost || 0);
-            totalRevenue += Number(item.price);
-            totalExpense += totalTripCost;
-
+        let totalRev = 0, totalExp = 0;
+        const data = rawData.map(item => {
+            const fuel = Math.round((item.km / 15) * item.gasPrice);
+            const cost = fuel + Number(item.road) + Number(item.driverCost || 0);
+            totalRev += Number(item.price);
+            totalExp += cost;
             return {
-                "Trạng Thái": item.status === "completed" ? "Đã xong" : "Chưa đi",
+                "Trạng Thái": item.status === "completed" ? "Xong" : "Chờ",
                 "Thời Gian": formatDateTime(item.time),
-                "Điểm Đi": item.from,
-                "Điểm Đến": item.to,
-                "Khách Hàng": item.phone,
-                "Doanh Thu": item.price,
-                "Số KM": item.km,
-                "Tổng Chi Phí": totalTripCost,
-                "Cầu Đường": item.road,
-                "Tiền Xăng": fuelCost,
-                "Loại Tài Xế": item.driverType,
-                "Ghi Chú": item.note || ""
+                "Điểm Đi": item.from, "Điểm Đến": item.to, "Khách": item.phone,
+                "Doanh Thu": item.price, "Số KM": item.km, "Tổng Chi Phí": cost,
+                "Cầu Đường": item.road, "Tiền Xăng": fuel, "Tài xế": item.driverType, "Ghi chú": item.note
             };
         });
 
-        formattedData.push({});
-        formattedData.push({ "Khách Hàng": "TỔNG DOANH THU:", "Doanh Thu": totalRevenue });
-        formattedData.push({ "Khách Hàng": "TỔNG CHI PHÍ:", "Doanh Thu": totalExpense });
-        formattedData.push({ "Khách Hàng": "LỢI NHUẬN:", "Doanh Thu": totalRevenue - totalExpense });
+        data.push({}, {"Khách": "TỔNG DOANH THU:", "Doanh Thu": totalRev}, {"Khách": "TỔNG CHI PHÍ:", "Doanh Thu": totalExp}, {"Khách": "LỢI NHUẬN:", "Doanh Thu": totalRev - totalExp});
 
-        const ws = XLSX.utils.json_to_sheet(formattedData);
+        const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "LichChayXe");
-
-        try {
-            XLSX.writeFile(wb, "Bao_Cao_Nha_Xe.xlsx");
-        } catch (e) {
-            alert("Lỗi xuất file: " + e.message);
+        XLSX.utils.book_append_sheet(wb, ws, "LichChay");
+        const wbout = XLSX.write(wb, {bookType: 'xlsx', type: 'binary'});
+        function s2ab(s) {
+            const buf = new ArrayBuffer(s.length);
+            const view = new Uint8Array(buf);
+            for (let i=0; i<s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+            return buf;
         }
+        const blob = new Blob([s2ab(wbout)], {type: 'application/octet-stream'});
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "Bao_Cao_Nha_Xe.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 0);
     }
 
     function deleteOldData() {
