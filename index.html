@@ -22,7 +22,6 @@
         .summary-item { font-size: 14px; font-weight: bold; }
         .summary-val { color: #d9534f; }
         
-        /* TIÊU ĐỀ: TO HƠN VÀ NẰM GIỮA TRANG */
         .section-title { 
             background: #f4f4f4; 
             padding: 15px; 
@@ -31,7 +30,7 @@
             border-bottom: 3px solid #007bff; 
             text-transform: uppercase;
             text-align: center; 
-            font-size: 22px; 
+            font-size: 20px; 
             color: #007bff;
         }
 
@@ -86,7 +85,7 @@
     
     <div class="btn-group">
         <button id="mainBtn" class="btn-add" onclick="saveTrip()">THÊM CHUYẾN</button>
-        <button class="btn-excel" onclick="exportCSV()">XUẤT FILE</button>
+        <button class="btn-excel" onclick="exportToExcel()">XUẤT EXCEL</button>
     </div>
     <button class="btn-delete-old" onclick="deleteOldData()">Xoá dữ liệu tháng cũ</button>
     
@@ -245,32 +244,44 @@
         toggleDriverFields();
     }
 
-    // PHẦN SỬA LỖI FONT EXCEL (UTF-8 WITH BOM)
-    function exportCSV() {
+    // GIẢI PHÁP MỚI: XUẤT FILE ĐỊNH DẠNG XML/HTML ĐỂ EXCEL ĐỌC ĐÚNG TIẾNG VIỆT
+    function exportToExcel() {
         const sortedData = Object.values(trips).sort((a, b) => new Date(a.time) - new Date(b.time));
         if(!sortedData.length) return alert("Không có dữ liệu!");
 
-        // Thêm BOM (Byte Order Mark) để Excel nhận diện tiếng Việt UTF-8
-        let csvContent = "\uFEFF"; 
-        csvContent += "sep=;\n"; // Chỉ định dấu chấm phẩy là ngăn cách cột
-        csvContent += "Trạng Thái;Thời Gian;Điểm Đi;Điểm Đến;Khách;Tài Xế Mướn;Doanh Thu;Số KM;Tiền Xăng;Cầu Đường;Tiền Thuê Tài Xế;Thực Lãi;Ghi chú\n";
+        let tableHtml = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head><meta charset="utf-8"></head>
+            <body>
+                <table border="1">
+                    <tr style="background-color: #007bff; color: white; font-weight: bold;">
+                        <td>Trạng Thái</td><td>Thời Gian</td><td>Điểm Đi</td><td>Điểm Đến</td>
+                        <td>Khách</td><td>Tài Xế Mướn</td><td>Doanh Thu</td><td>Số KM</td>
+                        <td>Tiền Xăng</td><td>Cầu Đường</td><td>Tiền Thuê Tài Xế</td><td>Thực Lãi</td><td>Ghi chú</td>
+                    </tr>`;
 
         sortedData.forEach(item => {
             const fuel = Math.round((item.km / 15) * (item.gasPrice || 24220));
             const totalTripCost = fuel + Number(item.road) + Number(item.driverCost || 0);
-            const row = [
-                item.status === "completed" ? "Xong" : "Chờ",
-                formatDateTime(item.time),
-                `"${item.from}"`, `"${item.to}"`, `"${item.phone}"`, `"${item.hiredDriverName || ''}"`,
-                item.price, item.km, fuel, item.road, item.driverCost || 0, (item.price - totalTripCost), `"${item.note || ''}"`
-            ].join(";"); 
-            csvContent += row + "\n";
+            tableHtml += `
+                <tr>
+                    <td>${item.status === "completed" ? "Xong" : "Chờ"}</td>
+                    <td>${formatDateTime(item.time)}</td>
+                    <td>${item.from}</td><td>${item.to}</td><td>${item.phone}</td>
+                    <td>${item.hiredDriverName || ''}</td>
+                    <td>${item.price}</td><td>${item.km}</td><td>${fuel}</td>
+                    <td>${item.road}</td><td>${item.driverCost || 0}</td>
+                    <td>${item.price - totalTripCost}</td>
+                    <td>${item.note || ''}</td>
+                </tr>`;
         });
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        tableHtml += `</table></body></html>`;
+
+        const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "Bao_Cao_Nha_Xe.csv";
+        link.download = "Bao_Cao_Chay_Xe.xls"; // Đuôi .xls để Excel nhận diện bảng
         link.click();
     }
 
