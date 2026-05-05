@@ -244,45 +244,45 @@
         toggleDriverFields();
     }
 
-    // GIẢI PHÁP MỚI: XUẤT FILE ĐỊNH DẠNG XML/HTML ĐỂ EXCEL ĐỌC ĐÚNG TIẾNG VIỆT
+    // PHƯƠNG PHÁP XUẤT CSV CÓ CHỮ KÝ BOM (FIX LỖI TIẾNG VIỆT & DÍNH CỘT)
     function exportToExcel() {
         const sortedData = Object.values(trips).sort((a, b) => new Date(a.time) - new Date(b.time));
         if(!sortedData.length) return alert("Không có dữ liệu!");
 
-        let tableHtml = `
-            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-            <head><meta charset="utf-8"></head>
-            <body>
-                <table border="1">
-                    <tr style="background-color: #007bff; color: white; font-weight: bold;">
-                        <td>Trạng Thái</td><td>Thời Gian</td><td>Điểm Đi</td><td>Điểm Đến</td>
-                        <td>Khách</td><td>Tài Xế Mướn</td><td>Doanh Thu</td><td>Số KM</td>
-                        <td>Tiền Xăng</td><td>Cầu Đường</td><td>Tiền Thuê Tài Xế</td><td>Thực Lãi</td><td>Ghi chú</td>
-                    </tr>`;
+        // Tiêu đề cột
+        let csvContent = "Trạng Thái,Thời Gian,Điểm Đi,Điểm Đến,SĐT Khách,Tài Xế Mướn,Doanh Thu,Số KM,Tiền Xăng,Cầu Đường,Tiền Thuê Tài Xế,Thực Lãi,Ghi Chú\n";
 
         sortedData.forEach(item => {
             const fuel = Math.round((item.km / 15) * (item.gasPrice || 24220));
             const totalTripCost = fuel + Number(item.road) + Number(item.driverCost || 0);
-            tableHtml += `
-                <tr>
-                    <td>${item.status === "completed" ? "Xong" : "Chờ"}</td>
-                    <td>${formatDateTime(item.time)}</td>
-                    <td>${item.from}</td><td>${item.to}</td><td>${item.phone}</td>
-                    <td>${item.hiredDriverName || ''}</td>
-                    <td>${item.price}</td><td>${item.km}</td><td>${fuel}</td>
-                    <td>${item.road}</td><td>${item.driverCost || 0}</td>
-                    <td>${item.price - totalTripCost}</td>
-                    <td>${item.note || ''}</td>
-                </tr>`;
+            const row = [
+                item.status === "completed" ? "Xong" : "Chờ",
+                formatDateTime(item.time),
+                `"${item.from}"`,
+                `"${item.to}"`,
+                `"${item.phone}"`,
+                `"${item.hiredDriverName || ''}"`,
+                item.price,
+                item.km,
+                fuel,
+                item.road,
+                item.driverCost || 0,
+                item.price - totalTripCost,
+                `"${(item.note || '').replace(/\n/g, ' ')}"`
+            ];
+            csvContent += row.join(",") + "\n";
         });
 
-        tableHtml += `</table></body></html>`;
-
-        const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
+        // Chèn mã BOM (\ufeff) vào đầu file để Excel hiểu là UTF-8
+        const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "Bao_Cao_Chay_Xe.xls"; // Đuôi .xls để Excel nhận diện bảng
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "Bao_Cao_Chay_Xe.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
     }
 
     function deleteOldData() {
