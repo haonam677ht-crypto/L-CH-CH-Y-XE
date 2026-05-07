@@ -41,6 +41,9 @@
         .btn-done.is-completed { background: #28a745; }
         .btn-delete-trip { background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         #hiredDriverFields { display: none; background: #fff9e6; padding: 10px; border-radius: 5px; border: 1px dashed #ffc107; margin-top: 5px; }
+        
+        /* CSS cho phần ghi chú hiển thị thêm */
+        .trip-note { font-style: italic; color: #666; background: #fdfdfd; border-left: 2px solid #ddd; padding-left: 5px; margin: 5px 0; }
     </style>
 </head>
 <body>
@@ -56,7 +59,7 @@
     <div class="form-group"><label>Ghi chú</label><textarea id="note" rows="2"></textarea></div>
     
     <div style="display: flex; gap: 10px;">
-        <div class="form-group" style="flex: 1;"><label>Giá chuyến</label><input type="number" id="price"></div>
+        <div class="form-group" style="flex: 1;"><label>Giá chuyến</label><input type="text" id="price" placeholder="2.300.000" oninput="formatInputCurrency(this)"></div>
         <div class="form-group" style="flex: 1;"><label>Số KM</label><input type="number" id="km"></div>
     </div>
     
@@ -76,7 +79,7 @@
     <div id="hiredDriverFields">
         <div class="form-group"><label>Tên tài xế mướn</label><input type="text" id="hiredDriverName"></div>
         <div class="form-group"><label>Số điện thoại tài xế</label><input type="text" id="hiredDriverPhone"></div>
-        <div class="form-group"><label>Tiền thuê tài xế</label><input type="number" id="driverCost"></div>
+        <div class="form-group"><label>Tiền thuê tài xế</label><input type="text" id="driverCost" oninput="formatInputCurrency(this)"></div>
     </div>
     
     <div class="btn-group">
@@ -127,6 +130,20 @@
 
     function formatNumber(num) { return num.toLocaleString('vi-VN'); }
 
+    // Tính năng mới: Tự động thêm dấu chấm khi gõ
+    function formatInputCurrency(input) {
+        let value = input.value.replace(/\D/g, "");
+        if (value !== "") {
+            input.value = Number(value).toLocaleString('vi-VN');
+        }
+    }
+
+    // Chuyển đổi chuỗi định dạng (2.300.000) về số để tính toán
+    function getRawNumber(id) {
+        let val = document.getElementById(id).value;
+        return Number(val.replace(/\./g, "")) || 0;
+    }
+
     function formatDateTime(dtStr) {
         if(!dtStr) return "";
         const d = new Date(dtStr);
@@ -141,14 +158,14 @@
             to: document.getElementById('to').value,
             phone: document.getElementById('phone').value,
             note: document.getElementById('note').value || "",
-            price: Number(document.getElementById('price').value) || 0,
+            price: getRawNumber('price'), // Lấy giá trị số thực để lưu
             km: Number(document.getElementById('km').value) || 0,
             gasPrice: Number(document.getElementById('gasPrice').value) || 24220,
             road: Number(document.getElementById('road').value) || 0,
             driverType: document.getElementById('driverType').value,
             hiredDriverName: document.getElementById('hiredDriverName').value || "",
             hiredDriverPhone: document.getElementById('hiredDriverPhone').value || "",
-            driverCost: Number(document.getElementById('driverCost').value) || 0,
+            driverCost: getRawNumber('driverCost'), // Lấy giá trị số thực để lưu
             status: key ? (trips[key].status || "pending") : "pending"
         };
         if(!tripData.time || !tripData.from) return alert("Bác điền thiếu thông tin rồi!");
@@ -189,6 +206,7 @@
                         <strong>${trip.from} ➝ ${trip.to}</strong>
                         <p>⏰ <span class="time-highlight">${formatDateTime(trip.time)}</span></p>
                         <p>📞 Khách: ${trip.phone}</p>
+                        ${trip.note ? `<p class="trip-note">📝 Ghi chú: ${trip.note}</p>` : ''}
                         ${trip.driverType === 'Tài xế mướn' ? `<p>👤 TX Mướn: ${trip.hiredDriverName} - ${trip.hiredDriverPhone}</p>` : ''}
                         <p>💰 Thu: ${formatNumber(trip.price)}đ | 📉 Chi: ${formatNumber(totalTripCost)}đ</p>
                         <p>💎 Thực lãi: <span style="color:#28a745; font-weight:bold;">${formatNumber(netProfit)}đ</span></p>
@@ -221,14 +239,17 @@
         document.getElementById('to').value = t.to;
         document.getElementById('phone').value = t.phone;
         document.getElementById('note').value = t.note || "";
-        document.getElementById('price').value = t.price;
+        
+        // Hiển thị lại số tiền có dấu chấm khi sửa
+        document.getElementById('price').value = formatNumber(t.price);
         document.getElementById('km').value = t.km;
         document.getElementById('road').value = t.road;
         document.getElementById('gasPrice').value = t.gasPrice || 24220;
         document.getElementById('driverType').value = t.driverType;
         document.getElementById('hiredDriverName').value = t.hiredDriverName || "";
         document.getElementById('hiredDriverPhone').value = t.hiredDriverPhone || "";
-        document.getElementById('driverCost').value = t.driverCost || 0;
+        document.getElementById('driverCost').value = formatNumber(t.driverCost || 0);
+        
         toggleDriverFields();
         document.getElementById('mainBtn').innerText = "CẬP NHẬT";
         window.scrollTo(0,0);
