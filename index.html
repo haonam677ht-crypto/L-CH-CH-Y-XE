@@ -14,7 +14,7 @@
         .form-group { margin-bottom: 12px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
         
-        /* Hiệu ứng lửa cháy "như thật" */
+        /* Hiệu ứng lửa cháy cho ô input */
         input, select, textarea { 
             width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; 
             box-sizing: border-box; background-color: #fff; color: #000; font-size: 16px;
@@ -24,14 +24,13 @@
 
         input:focus, select:focus, textarea:focus {
             border-color: #ff4500;
-            /* Tạo nhiều lớp bóng để giống lửa đang tỏa nhiệt */
             box-shadow: 
                 0 0 5px #fff, 
                 0 0 10px #ff8c00, 
                 0 0 20px #ff4500, 
                 0 0 30px #ff0000;
             animation: real-fire 0.8s infinite alternate ease-in-out;
-            transform: scale(1.01); /* Nhích nhẹ khung khi chọn */
+            transform: scale(1.01);
         }
 
         @keyframes real-fire {
@@ -49,6 +48,22 @@
             }
         }
 
+        /* HIỆU ỨNG LỬA CHO ĐƠN XE HÔM NAY */
+        .today-fire-effect {
+            position: relative;
+            border: 2px solid #ff4500 !important;
+            margin-bottom: 15px !important;
+            border-radius: 8px !important;
+            animation: fire-border 1.5s infinite alternate;
+            box-shadow: 0 0 10px rgba(255, 69, 0, 0.5);
+        }
+
+        @keyframes fire-border {
+            0% { box-shadow: 0 0 5px #ff4500, 0 0 10px #ff8c00; border-color: #ff4500; }
+            50% { box-shadow: 0 0 15px #ff0000, 0 0 25px #ff8c00; border-color: #ff8c00; }
+            100% { box-shadow: 0 0 5px #ff4500, 0 0 10px #ff8c00; border-color: #ff4500; }
+        }
+
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
         .btn-add { background-color: #28a745; color: white; border: none; flex: 2; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .btn-excel { background-color: #007bff; color: white; border: none; flex: 1; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
@@ -62,13 +77,14 @@
             border-bottom: 3px solid #007bff; text-transform: uppercase; text-align: center; color: #007bff;
         }
 
-        .trip-item { border-bottom: 1px solid #eee; padding: 12px 0; position: relative; border-left: 5px solid transparent; }
+        .trip-item { border-bottom: 1px solid #eee; padding: 12px; position: relative; border-left: 5px solid transparent; }
         .trip-info p { margin: 4px 0; font-size: 13px; color: #444; }
         .time-highlight { color: #d9534f; font-size: 16px; font-weight: 800; background: #fff0f0; padding: 2px 6px; border-radius: 4px; }
-        .completed-trip { border-left: 5px solid #28a745; background-color: #f0fff4; opacity: 0.9; }
+        .completed-trip { border-left: 5px solid #28a745 !important; background-color: #f0fff4; opacity: 0.9; animation: none !important; box-shadow: none !important; border-top: 1px solid #eee !important; border-right: 1px solid #eee !important; border-bottom: 1px solid #eee !important;}
         .driver-tag { font-size: 11px; padding: 2px 6px; border-radius: 3px; color: white; font-weight: bold; margin-top: 5px; display: inline-block; }
         .tag-nha { background: #28a745; }
         .tag-muon { background: #ffc107; color: #000; }
+        .km-badge { background: #ff4500; padding: 2px 8px; border-radius: 10px; color: #fff; font-weight: bold; margin: 0 8px; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .action-btns { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
         .btn-call { background: #28a745; color: white; text-decoration: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; display: flex; align-items: center; }
         .btn-edit { background: #ffc107; color: black; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; }
@@ -232,10 +248,13 @@
             
             tripCount++; totalRev += Number(trip.price); totalCost += totalTripCost;
 
+            // Thêm class hiệu ứng lửa cho các chuyến "Hôm nay" chưa hoàn thành
+            const fireClass = (tripDayStr === nowDayStr && !isDone) ? 'today-fire-effect' : '';
+
             const html = `
-                <div class="trip-item ${isDone ? 'completed-trip' : ''}">
+                <div class="trip-item ${isDone ? 'completed-trip' : ''} ${fireClass}">
                     <div class="trip-info">
-                        <strong>${trip.from} ➝ ${trip.to}</strong>
+                        <strong style="font-size: 15px;">${trip.from} <span class="km-badge">🔥 ${trip.km} KM 🔥</span> ${trip.to}</strong>
                         <p>⏰ <span class="time-highlight">${formatDateTime(trip.time)}</span></p>
                         <p>📞 Khách: ${trip.phone}</p>
                         ${trip.note ? `<p class="trip-note">📝 Ghi chú: ${trip.note}</p>` : ''}
