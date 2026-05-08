@@ -48,20 +48,41 @@
             }
         }
 
-        /* HIỆU ỨNG LỬA CHO ĐƠN XE HÔM NAY */
+        /* HIỆU ỨNG LỬA RỰC CHÁY MẠNH CHO ĐƠN XE HÔM NAY */
         .today-fire-effect {
             position: relative;
             border: 2px solid #ff4500 !important;
-            margin-bottom: 15px !important;
+            margin-bottom: 20px !important;
             border-radius: 8px !important;
-            animation: fire-border 1.5s infinite alternate;
-            box-shadow: 0 0 10px rgba(255, 69, 0, 0.5);
+            background: linear-gradient(to bottom, #fffdfa, #ffffff);
+            animation: real-fire-border 0.8s infinite alternate ease-in-out;
         }
 
-        @keyframes fire-border {
-            0% { box-shadow: 0 0 5px #ff4500, 0 0 10px #ff8c00; border-color: #ff4500; }
-            50% { box-shadow: 0 0 15px #ff0000, 0 0 25px #ff8c00; border-color: #ff8c00; }
-            100% { box-shadow: 0 0 5px #ff4500, 0 0 10px #ff8c00; border-color: #ff4500; }
+        @keyframes real-fire-border {
+            0% { 
+                box-shadow: 
+                    0 0 8px #fff,
+                    0 -4px 12px #ff8c00, 
+                    0 -8px 20px #ff4500, 
+                    0 -12px 30px #ff0000;
+                border-color: #ff8c00;
+            }
+            50% { 
+                box-shadow: 
+                    0 0 12px #fff,
+                    0 -6px 18px #ffa500, 
+                    0 -12px 30px #ff4500, 
+                    0 -18px 45px #e60000;
+                border-color: #ff4500;
+            }
+            100% { 
+                box-shadow: 
+                    0 0 6px #fff,
+                    0 -3px 10px #ff4500, 
+                    0 -6px 15px #d2691e, 
+                    0 -10px 25px #8b0000;
+                border-color: #b22222;
+            }
         }
 
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
@@ -80,7 +101,7 @@
         .trip-item { border-bottom: 1px solid #eee; padding: 12px; position: relative; border-left: 5px solid transparent; }
         .trip-info p { margin: 4px 0; font-size: 13px; color: #444; }
         .time-highlight { color: #d9534f; font-size: 16px; font-weight: 800; background: #fff0f0; padding: 2px 6px; border-radius: 4px; }
-        .completed-trip { border-left: 5px solid #28a745 !important; background-color: #f0fff4; opacity: 0.9; animation: none !important; box-shadow: none !important; border-top: 1px solid #eee !important; border-right: 1px solid #eee !important; border-bottom: 1px solid #eee !important;}
+        .completed-trip { border-left: 5px solid #28a745 !important; background-color: #f0fff4 !important; opacity: 0.9; animation: none !important; box-shadow: none !important; border-top: 1px solid #eee !important; border-right: 1px solid #eee !important; border-bottom: 1px solid #eee !important;}
         .driver-tag { font-size: 11px; padding: 2px 6px; border-radius: 3px; color: white; font-weight: bold; margin-top: 5px; display: inline-block; }
         .tag-nha { background: #28a745; }
         .tag-muon { background: #ffc107; color: #000; }
@@ -248,7 +269,6 @@
             
             tripCount++; totalRev += Number(trip.price); totalCost += totalTripCost;
 
-            // Thêm class hiệu ứng lửa cho các chuyến "Hôm nay" chưa hoàn thành
             const fireClass = (tripDayStr === nowDayStr && !isDone) ? 'today-fire-effect' : '';
 
             const html = `
