@@ -189,9 +189,15 @@
         document.getElementById('editKey').value = ''; document.getElementById('mainBtn').innerText = "THÊM CHUYẾN"; ['time', 'from', 'to', 'phone', 'note', 'price', 'km', 'road', 'hiredDriverName', 'hiredDriverPhone', 'driverCost'].forEach(id => document.getElementById(id).value = ''); document.getElementById('gasPrice').value = "24.220"; document.getElementById('driverType').value = "Tài xế nhà"; toggleDriverFields();
     }
 
-    // --- SỬA LẠI ĐỂ HIỆN ĐÚNG TÊN FILE, KHÔNG HIỆN CHỮ A LẰNG NHẰNG ---
+    // --- PHẦN XUẤT EXCEL CÓ THÔNG BÁO TRỰC TIẾP ---
     function exportToExcel() {
-        const sortedData = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time)).map(k => {
+        const sortedKeys = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time));
+        if(!sortedKeys.length) return alert("Không có dữ liệu!");
+
+        // Thông báo cho người dùng biết App đang bắt đầu xử lý
+        console.log("Bắt đầu xuất Excel...");
+        
+        const sortedData = sortedKeys.map(k => {
             const t = trips[k];
             const fuel = Math.round((t.km / 15) * (t.gasPrice || 24220));
             const cost = fuel + Number(t.road) + Number(t.driverCost || 0);
@@ -208,28 +214,28 @@
                 "Ghi Chú": (t.note || "").replace(/\n/g, " ")
             };
         });
-
-        if(!sortedData.length) return alert("Không có dữ liệu!");
         
         const worksheet = XLSX.utils.json_to_sheet(sortedData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
         
-        // Tạo file dưới dạng mảng byte
+        // Ghi file dạng mảng byte
         const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         
-        // Dùng Blob để ép hệ thống nhận diện đúng định dạng file và tên file
+        // Ép hệ thống Android nhận diện file tải xuống thông qua Blob
         const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = window.URL.createObjectURL(blob);
         
         const link = document.createElement("a");
         link.href = url;
-        link.download = "Lich_Chay_Xe.xlsx"; // Tên file hiện đúng ở đây
+        link.download = "Lich_Chay_Xe.xlsx";
         
         document.body.appendChild(link);
         link.click();
         
-        // Dọn dẹp bộ nhớ
+        // Hiện thông báo trực tiếp trên màn hình vì thanh thông báo Android có thể ẩn đi
+        alert("Đã lưu file thành công! Bác vui lòng kiểm tra trong mục 'Tải xuống' (Downloads) của điện thoại.");
+        
         setTimeout(() => {
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
