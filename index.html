@@ -191,58 +191,80 @@
 
     // --- PHẦN XUẤT EXCEL CÓ THÔNG BÁO TRỰC TIẾP ---
     function exportToExcel() {
-        const sortedKeys = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time));
-        if(!sortedKeys.length) return alert("Không có dữ liệu!");
+    const sortedKeys = Object.keys(trips).sort((a, b) => 
+        new Date(trips[a].time) - new Date(trips[b].time)
+    );
 
-        // Thông báo cho người dùng biết App đang bắt đầu xử lý
-        console.log("Bắt đầu xuất Excel...");
-        
-        const sortedData = sortedKeys.map(k => {
-            const t = trips[k];
-            const fuel = Math.round((t.km / 15) * (t.gasPrice || 24220));
-            const cost = fuel + Number(t.road) + Number(t.driverCost || 0);
-            return {
-                "Trạng Thái": t.status === "completed" ? "Xong" : "Chờ",
-                "Thời Gian": formatDateTime(t.time),
-                "Điểm Đi": t.from,
-                "Điểm Đến": t.to,
-                "Khách": t.phone,
-                "Số KM": t.km,
-                "Doanh Thu": t.price,
-                "Chi Phí": cost,
-                "Thực Lãi": t.price - cost,
-                "Ghi Chú": (t.note || "").replace(/\n/g, " ")
-            };
-        });
-        
-        const worksheet = XLSX.utils.json_to_sheet(sortedData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
-        
-        // Ghi file dạng mảng byte
-        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        
-        // Ép hệ thống Android nhận diện file tải xuống thông qua Blob
-        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = window.URL.createObjectURL(blob);
-        
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "Lich_Chay_Xe.xlsx";
-        
-        document.body.appendChild(link);
-        link.click();
-        
-        // Hiện thông báo trực tiếp trên màn hình vì thanh thông báo Android có thể ẩn đi
-        alert("Đã lưu file thành công! Bác vui lòng kiểm tra trong mục 'Tải xuống' (Downloads) của điện thoại.");
-        
-        setTimeout(() => {
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        }, 100);
+    if (!sortedKeys.length) {
+        alert("Không có dữ liệu!");
+        return;
     }
+
+    const sortedData = sortedKeys.map(k => {
+        const t = trips[k];
+        const fuel = Math.round((t.km / 15) * (t.gasPrice || 24220));
+        const cost = fuel + Number(t.road) + Number(t.driverCost || 0);
+
+        return {
+            "Trạng Thái": t.status === "completed" ? "Xong" : "Chờ",
+            "Thời Gian": formatDateTime(t.time),
+            "Điểm Đi": t.from,
+            "Điểm Đến": t.to,
+            "Khách": t.phone,
+            "Số KM": t.km,
+            "Doanh Thu": t.price,
+            "Chi Phí": cost,
+            "Thực Lãi": t.price - cost,
+            "Ghi Chú": (t.note || "").replace(/\n/g, " ")
+        };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(sortedData);
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
+
+    // Android WebView fix
+    const excelBuffer = XLSX.write(workbook, {
+        bookType: 'xlsx',
+        type: 'array'
+    });
+
+    const blob = new Blob(
+        [excelBuffer],
+        {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }
+    );
+
+    const fileName = "Lich_Chay_Xe.xlsx";
+
+    // Android Chrome + WebView
+    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+        window.navigator.msSaveOrOpenBlob(blob, fileName);
+    } else {
+        const a = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+
+        a.href = url;
+        a.download = fileName;
+        a.style.display = "none";
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            alert("Đã xuất file Excel thành công!");
+        }, 500);
+    }
+}
 
     function deleteOldData() { if(confirm("Xoá dữ liệu tháng cũ?")) { const firstDay = "2026-05-01"; for (let key in trips) { if (trips[key].time < firstDay) db.ref('trips/' + key).remove(); } } }
 </script>
 </body>
 </html>
+
