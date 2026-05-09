@@ -189,7 +189,7 @@
         document.getElementById('editKey').value = ''; document.getElementById('mainBtn').innerText = "THÊM CHUYẾN"; ['time', 'from', 'to', 'phone', 'note', 'price', 'km', 'road', 'hiredDriverName', 'hiredDriverPhone', 'driverCost'].forEach(id => document.getElementById(id).value = ''); document.getElementById('gasPrice').value = "24.220"; document.getElementById('driverType').value = "Tài xế nhà"; toggleDriverFields();
     }
 
-    // --- CHỈNH SỬA: BẤM LÀ XUẤT LUÔN KHÔNG CẦN NHẬP TÊN ---
+    // --- CHỈNH SỬA ĐỂ KHÔNG HIỆN HỘP THOẠI LƯU TÊN ---
     function exportToExcel() {
         const sortedData = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time)).map(k => {
             const t = trips[k];
@@ -215,8 +215,30 @@
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
         
-        // Dùng XLSX.writeFile để trình duyệt tự xử lý tải xuống ngay với tên file mặc định
-        XLSX.writeFile(workbook, `Bao_Cao_Chay_Xe_${new Date().getTime()}.xlsx`);
+        // Tạo dữ liệu dạng nhị phân (Binary String)
+        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'binary' });
+
+        function s2ab(s) {
+            const buf = new ArrayBuffer(s.length);
+            const view = new Uint8Array(buf);
+            for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+            return buf;
+        }
+
+        // Tạo tệp dưới dạng Blob và sử dụng URL.createObjectURL để ép trình duyệt tải ngay
+        const fileData = new Blob([s2ab(wbout)], { type: "application/octet-stream" });
+        const downloadUrl = window.URL.createObjectURL(fileData);
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = "Bao_Cao_Chay_Xe.xlsx"; // Đặt tên cố định tại đây
+        document.body.appendChild(a);
+        a.click();
+        
+        // Dọn dẹp
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        }, 100);
     }
 
     function deleteOldData() { if(confirm("Xoá dữ liệu tháng cũ?")) { const firstDay = "2026-05-01"; for (let key in trips) { if (trips[key].time < firstDay) db.ref('trips/' + key).remove(); } } }
