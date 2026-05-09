@@ -189,7 +189,7 @@
         document.getElementById('editKey').value = ''; document.getElementById('mainBtn').innerText = "THÊM CHUYẾN"; ['time', 'from', 'to', 'phone', 'note', 'price', 'km', 'road', 'hiredDriverName', 'hiredDriverPhone', 'driverCost'].forEach(id => document.getElementById(id).value = ''); document.getElementById('gasPrice').value = "24.220"; document.getElementById('driverType').value = "Tài xế nhà"; toggleDriverFields();
     }
 
-    // --- PHẦN CHỈNH SỬA DUY NHẤT ĐỂ TẢI FILE TRỰC TIẾP ---
+    // --- SỬA LẠI ĐỂ HIỆN ĐÚNG TÊN FILE, KHÔNG HIỆN CHỮ A LẰNG NHẰNG ---
     function exportToExcel() {
         const sortedData = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time)).map(k => {
             const t = trips[k];
@@ -215,18 +215,25 @@
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
         
-        // Chuyển đổi dữ liệu sang Base64 để ép trình duyệt/App tải ngay lập tức
-        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
-        const url = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + wbout;
+        // Tạo file dưới dạng mảng byte
+        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        
+        // Dùng Blob để ép hệ thống nhận diện đúng định dạng file và tên file
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
         
         const link = document.createElement("a");
         link.href = url;
-        // Đặt tên file cố định để hệ thống không cần hỏi người dùng nhập tên
-        link.download = "Lich_Chay_Xe.xlsx";
+        link.download = "Lich_Chay_Xe.xlsx"; // Tên file hiện đúng ở đây
         
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        
+        // Dọn dẹp bộ nhớ
+        setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        }, 100);
     }
 
     function deleteOldData() { if(confirm("Xoá dữ liệu tháng cũ?")) { const firstDay = "2026-05-01"; for (let key in trips) { if (trips[key].time < firstDay) db.ref('trips/' + key).remove(); } } }
