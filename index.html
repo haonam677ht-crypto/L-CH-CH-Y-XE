@@ -7,6 +7,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Thêm thư viện hỗ trợ tải file trên App Mobile -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         :root { color-scheme: light; } 
         body { font-family: sans-serif; background-color: #ffffff; color: #333; margin: 0; padding: 15px; }
@@ -189,82 +191,52 @@
         document.getElementById('editKey').value = ''; document.getElementById('mainBtn').innerText = "THÊM CHUYẾN"; ['time', 'from', 'to', 'phone', 'note', 'price', 'km', 'road', 'hiredDriverName', 'hiredDriverPhone', 'driverCost'].forEach(id => document.getElementById(id).value = ''); document.getElementById('gasPrice').value = "24.220"; document.getElementById('driverType').value = "Tài xế nhà"; toggleDriverFields();
     }
 
-    // --- PHẦN XUẤT EXCEL CÓ THÔNG BÁO TRỰC TIẾP ---
+    // --- PHẦN XUẤT EXCEL ĐÃ ĐƯỢC CẬP NHẬT ĐỂ CHẠY TRÊN APPSGEYSER ---
     function exportToExcel() {
-    const sortedKeys = Object.keys(trips).sort((a, b) => 
-        new Date(trips[a].time) - new Date(trips[b].time)
-    );
+        const sortedKeys = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time));
+        if(!sortedKeys.length) return alert("Không có dữ liệu!");
 
-    if (!sortedKeys.length) {
-        alert("Không có dữ liệu!");
-        return;
-    }
-
-    const sortedData = sortedKeys.map(k => {
-        const t = trips[k];
-        const fuel = Math.round((t.km / 15) * (t.gasPrice || 24220));
-        const cost = fuel + Number(t.road) + Number(t.driverCost || 0);
-
-        return {
-            "Trạng Thái": t.status === "completed" ? "Xong" : "Chờ",
-            "Thời Gian": formatDateTime(t.time),
-            "Điểm Đi": t.from,
-            "Điểm Đến": t.to,
-            "Khách": t.phone,
-            "Số KM": t.km,
-            "Doanh Thu": t.price,
-            "Chi Phí": cost,
-            "Thực Lãi": t.price - cost,
-            "Ghi Chú": (t.note || "").replace(/\n/g, " ")
-        };
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(sortedData);
-    const workbook = XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
-
-    // Android WebView fix
-    const excelBuffer = XLSX.write(workbook, {
-        bookType: 'xlsx',
-        type: 'array'
-    });
-
-    const blob = new Blob(
-        [excelBuffer],
-        {
-            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        const sortedData = sortedKeys.map(k => {
+            const t = trips[k];
+            const fuel = Math.round((t.km / 15) * (t.gasPrice || 24220));
+            const cost = fuel + Number(t.road) + Number(t.driverCost || 0);
+            return {
+                "Trạng Thái": t.status === "completed" ? "Xong" : "Chờ",
+                "Thời Gian": formatDateTime(t.time),
+                "Điểm Đi": t.from,
+                "Điểm Đến": t.to,
+                "Khách": t.phone,
+                "Số KM": t.km,
+                "Doanh Thu": t.price,
+                "Chi Phí": cost,
+                "Thực Lãi": t.price - cost,
+                "Ghi Chú": (t.note || "").replace(/\n/g, " ")
+            };
+        });
+        
+        const worksheet = XLSX.utils.json_to_sheet(sortedData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
+        
+        // Ghi file dạng Uint8Array (mảng byte) để Mobile dễ đọc
+        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        
+        // Dùng Blob kết hợp FileSaver để lách qua lỗi Permission trên Appsgeyser
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        
+        try {
+            // Lệnh saveAs từ thư viện FileSaver.js giúp kích hoạt trình tải về của điện thoại
+            saveAs(blob, "Lich_Chay_Xe.xlsx");
+            alert("Đã gửi yêu cầu xuất file! Bác chọn 'SAVE FILE' hoặc kiểm tra thanh thông báo nhé.");
+        } catch (e) {
+            // Nếu vẫn bị chặn, dùng cách dự phòng mở bằng cửa sổ mới
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            alert("Đang mở file, bác kiểm tra mục Tải xuống nhé!");
         }
-    );
-
-    const fileName = "Lich_Chay_Xe.xlsx";
-
-    // Android Chrome + WebView
-    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-        window.navigator.msSaveOrOpenBlob(blob, fileName);
-    } else {
-        const a = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-
-        a.href = url;
-        a.download = fileName;
-        a.style.display = "none";
-
-        document.body.appendChild(a);
-
-        a.click();
-
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-
-            alert("Đã xuất file Excel thành công!");
-        }, 500);
     }
-}
 
     function deleteOldData() { if(confirm("Xoá dữ liệu tháng cũ?")) { const firstDay = "2026-05-01"; for (let key in trips) { if (trips[key].time < firstDay) db.ref('trips/' + key).remove(); } } }
 </script>
 </body>
 </html>
-
