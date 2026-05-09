@@ -71,7 +71,6 @@
         .btn-edit { background: #ffc107; color: black; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .btn-done { background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .btn-done.is-completed { background: #28a745; }
-        .btn-done.is-completed { background: #28a745; }
         .btn-delete-trip { background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         #hiredDriverFields { display: none; background: #fff9e6; padding: 10px; border-radius: 5px; border: 1px dashed #ffc107; margin-top: 5px; }
         .trip-note { font-style: italic; color: #666; background: #fdfdfd; border-left: 2px solid #ddd; padding-left: 5px; margin: 5px 0; }
@@ -190,7 +189,7 @@
         document.getElementById('editKey').value = ''; document.getElementById('mainBtn').innerText = "THÊM CHUYẾN"; ['time', 'from', 'to', 'phone', 'note', 'price', 'km', 'road', 'hiredDriverName', 'hiredDriverPhone', 'driverCost'].forEach(id => document.getElementById(id).value = ''); document.getElementById('gasPrice').value = "24.220"; document.getElementById('driverType').value = "Tài xế nhà"; toggleDriverFields();
     }
 
-    // --- CHỈ SỬA PHẦN NÀY ĐỂ ĐỌC ĐƯỢC EXCEL TRÊN ĐIỆN THOẠI ---
+    // --- CHỈNH SỬA: BẤM LÀ XUẤT LUÔN KHÔNG CẦN NHẬP TÊN ---
     function exportToExcel() {
         const sortedData = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time)).map(k => {
             const t = trips[k];
@@ -216,18 +215,8 @@
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
         
-        // Tạo buffer để ép kiểu Blob cho điện thoại
-        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        const data = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-        
-        // Tạo link tải giả lập để kích hoạt trình tải xuống trên trình duyệt mobile
-        const url = window.URL.createObjectURL(data);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `Bao_Cao_Chay_Xe_${new Date().getTime()}.xlsx`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Dùng XLSX.writeFile để trình duyệt tự xử lý tải xuống ngay với tên file mặc định
+        XLSX.writeFile(workbook, `Bao_Cao_Chay_Xe_${new Date().getTime()}.xlsx`);
     }
 
     function deleteOldData() { if(confirm("Xoá dữ liệu tháng cũ?")) { const firstDay = "2026-05-01"; for (let key in trips) { if (trips[key].time < firstDay) db.ref('trips/' + key).remove(); } } }
