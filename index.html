@@ -7,8 +7,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- Thêm thư viện hỗ trợ tải file trên App Mobile -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         :root { color-scheme: light; } 
         body { font-family: sans-serif; background-color: #ffffff; color: #333; margin: 0; padding: 15px; }
@@ -84,8 +82,28 @@
     <h2>LỊCH CHẠY XE</h2>
     <input type="hidden" id="editKey">
     <div class="form-group"><label>Thời gian rước</label><input type="datetime-local" id="time"></div>
-    <div class="form-group"><label>Điểm đi</label><input type="text" id="from"></div>
-    <div class="form-group"><label>Điểm đến</label><input type="text" id="to"></div>
+    <div class="form-group">
+        <label>Điểm đi</label>
+        <input type="text" id="from" list="location-hints">
+    </div>
+    <div class="form-group">
+        <label>Điểm đến</label>
+        <input type="text" id="to" list="location-hints">
+    </div>
+    
+    <!-- Danh sách gợi ý địa điểm -->
+    <datalist id="location-hints">
+        <option value="Sân bay Tân Sơn Nhất">
+        <option value="Sân bay Long Thành">
+        <option value="Bệnh viện Chợ Rẫy">
+        <option value="Bệnh viện Đại học Y Dược">
+        <option value="Vũng Tàu">
+        <option value="Đà Lạt">
+        <option value="Cần Thơ">
+        <option value="Phan Thiết">
+        <option value="Tây Ninh">
+    </datalist>
+
     <div class="form-group"><label>SĐT/Tên Khách</label><input type="text" id="phone"></div>
     <div class="form-group"><label>Ghi chú</label><textarea id="note" rows="2"></textarea></div>
     <div style="display: flex; gap: 10px;">
@@ -136,11 +154,31 @@
     const db = firebase.database();
     let trips = {};
 
+    // MỚI: Tự động lấy giá xăng đã lưu khi mở trang
+    window.onload = function() {
+        const savedGas = localStorage.getItem('userGasPrice');
+        if (savedGas) {
+            document.getElementById('gasPrice').value = savedGas;
+        }
+    };
+
     db.ref('trips').on('value', (snapshot) => { trips = snapshot.val() || {}; renderTrips(); });
 
     function toggleDriverFields() { const type = document.getElementById('driverType').value; document.getElementById('hiredDriverFields').style.display = (type === "Tài xế mướn") ? "block" : "none"; }
     function formatNumber(num) { return num.toLocaleString('vi-VN'); }
-    function formatInputCurrency(input) { let value = input.value.replace(/\D/g, ""); if (value !== "") { input.value = Number(value).toLocaleString('vi-VN'); } }
+    
+    function formatInputCurrency(input) { 
+        let value = input.value.replace(/\D/g, ""); 
+        if (value !== "") { 
+            let formatted = Number(value).toLocaleString('vi-VN');
+            input.value = formatted;
+            // MỚI: Nếu người dùng gõ vào ô giá xăng thì lưu lại ngay
+            if (input.id === 'gasPrice') {
+                localStorage.setItem('userGasPrice', formatted);
+            }
+        } 
+    }
+
     function getRawNumber(id) { let val = document.getElementById(id).value; return Number(val.replace(/\./g, "")) || 0; }
     function formatDateTime(dtStr) { if(!dtStr) return ""; const d = new Date(dtStr); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; }
 
@@ -188,53 +226,47 @@
     }
 
     function resetForm() {
-        document.getElementById('editKey').value = ''; document.getElementById('mainBtn').innerText = "THÊM CHUYẾN"; ['time', 'from', 'to', 'phone', 'note', 'price', 'km', 'road', 'hiredDriverName', 'hiredDriverPhone', 'driverCost'].forEach(id => document.getElementById(id).value = ''); document.getElementById('gasPrice').value = "24.220"; document.getElementById('driverType').value = "Tài xế nhà"; toggleDriverFields();
+        const currentGas = document.getElementById('gasPrice').value; // MỚI: Giữ giá xăng hiện tại
+        document.getElementById('editKey').value = ''; 
+        document.getElementById('mainBtn').innerText = "THÊM CHUYẾN"; 
+        ['time', 'from', 'to', 'phone', 'note', 'price', 'km', 'road', 'hiredDriverName', 'hiredDriverPhone', 'driverCost'].forEach(id => document.getElementById(id).value = ''); 
+        document.getElementById('gasPrice').value = currentGas; // MỚI: Trả lại giá xăng vừa gõ
+        document.getElementById('driverType').value = "Tài xế nhà"; 
+        toggleDriverFields();
     }
 
-    // --- PHẦN XUẤT EXCEL ĐÃ ĐƯỢC CẬP NHẬT ĐỂ CHẠY TRÊN APPSGEYSER ---
+    // --- PHẦN XUẤT EXCEL GIỮ NGUYÊN ---
     function exportToExcel() {
-        const sortedKeys = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time));
-        if(!sortedKeys.length) return alert("Không có dữ liệu!");
-
-        const sortedData = sortedKeys.map(k => {
-            const t = trips[k];
-            const fuel = Math.round((t.km / 15) * (t.gasPrice || 24220));
-            const cost = fuel + Number(t.road) + Number(t.driverCost || 0);
-            return {
-                "Trạng Thái": t.status === "completed" ? "Xong" : "Chờ",
-                "Thời Gian": formatDateTime(t.time),
-                "Điểm Đi": t.from,
-                "Điểm Đến": t.to,
-                "Khách": t.phone,
-                "Số KM": t.km,
-                "Doanh Thu": t.price,
-                "Chi Phí": cost,
-                "Thực Lãi": t.price - cost,
-                "Ghi Chú": (t.note || "").replace(/\n/g, " ")
-            };
-        });
-        
-        const worksheet = XLSX.utils.json_to_sheet(sortedData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
-        
-        // Ghi file dạng Uint8Array (mảng byte) để Mobile dễ đọc
-        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        
-        // Dùng Blob kết hợp FileSaver để lách qua lỗi Permission trên Appsgeyser
-        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        
-        try {
-            // Lệnh saveAs từ thư viện FileSaver.js giúp kích hoạt trình tải về của điện thoại
-            saveAs(blob, "Lich_Chay_Xe.xlsx");
-            alert("Đã gửi yêu cầu xuất file! Bác chọn 'SAVE FILE' hoặc kiểm tra thanh thông báo nhé.");
-        } catch (e) {
-            // Nếu vẫn bị chặn, dùng cách dự phòng mở bằng cửa sổ mới
-            const url = window.URL.createObjectURL(blob);
-            window.open(url, '_blank');
-            alert("Đang mở file, bác kiểm tra mục Tải xuống nhé!");
-        }
+    const sortedKeys = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time));
+    if (!sortedKeys.length) { alert("Không có dữ liệu!"); return; }
+    const sortedData = sortedKeys.map(k => {
+        const t = trips[k];
+        const fuel = Math.round((t.km / 15) * (t.gasPrice || 24220));
+        const cost = fuel + Number(t.road) + Number(t.driverCost || 0);
+        return {
+            "Trạng Thái": t.status === "completed" ? "Xong" : "Chờ",
+            "Thời Gian": formatDateTime(t.time),
+            "Điểm Đi": t.from,
+            "Điểm Đến": t.to,
+            "Khách": t.phone,
+            "Số KM": t.km,
+            "Doanh Thu": t.price,
+            "Chi Phí": cost,
+            "Thực Lãi": t.price - cost,
+            "Ghi Chú": (t.note || "").replace(/\n/g, " ")
+        };
+    });
+    const worksheet = XLSX.utils.json_to_sheet(sortedData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const fileName = "Lich_Chay_Xe.xlsx";
+    if (window.navigator && window.navigator.msSaveOrOpenBlob) { window.navigator.msSaveOrOpenBlob(blob, fileName); } 
+    else { const a = document.createElement("a"); const url = URL.createObjectURL(blob); a.href = url; a.download = fileName; a.style.display = "none"; document.body.appendChild(a); a.click();
+        setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); alert("Đã xuất file Excel thành công!"); }, 500);
     }
+}
 
     function deleteOldData() { if(confirm("Xoá dữ liệu tháng cũ?")) { const firstDay = "2026-05-01"; for (let key in trips) { if (trips[key].time < firstDay) db.ref('trips/' + key).remove(); } } }
 </script>
