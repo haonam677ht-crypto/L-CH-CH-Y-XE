@@ -18,23 +18,17 @@
         input, select, textarea { 
             width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; 
             box-sizing: border-box; background-color: #fff; color: #000; font-size: 16px;
-            transition: all 0.3s ease;
+            transition: border-color 0.3s ease;
             outline: none;
         }
 
+        /* Thay đổi hiệu ứng focus thành viền xanh nhẹ */
         input:focus, select:focus, textarea:focus {
-            border-color: #ff4500;
-            box-shadow: 0 0 5px #fff, 0 0 10px #ff8c00, 0 0 20px #ff4500, 0 0 30px #ff0000;
-            animation: real-fire 0.8s infinite alternate ease-in-out;
-            transform: scale(1.01);
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.25);
         }
 
-        @keyframes real-fire {
-            0% { box-shadow: 0 0 8px #fff, 0 0 15px #ff8c00, 0 0 25px #ff4500, 0 0 35px #ff0000; border-color: #ff8c00; }
-            50% { box-shadow: 0 0 12px #fff, 0 0 20px #ffa500, 0 0 35px #ff4500, 0 0 50px #e60000; border-color: #ff4500; }
-            100% { box-shadow: 0 0 6px #fff, 0 0 12px #ff4500, 0 0 20px #d2691e, 0 0 30px #8b0000; border-color: #b22222; }
-        }
-
+        /* Giữ hiệu ứng lửa chỉ riêng cho khung bao quanh chuyến đi "Hôm nay" để dễ nhận diện */
         .today-fire-effect {
             position: relative;
             border: 2px solid #ff4500 !important;
@@ -84,25 +78,12 @@
     <div class="form-group"><label>Thời gian rước</label><input type="datetime-local" id="time"></div>
     <div class="form-group">
         <label>Điểm đi</label>
-        <input type="text" id="from" list="location-hints">
+        <input type="text" id="from">
     </div>
     <div class="form-group">
         <label>Điểm đến</label>
-        <input type="text" id="to" list="location-hints">
+        <input type="text" id="to">
     </div>
-    
-    <!-- Danh sách gợi ý địa điểm -->
-    <datalist id="location-hints">
-        <option value="Sân bay Tân Sơn Nhất">
-        <option value="Sân bay Long Thành">
-        <option value="Bệnh viện Chợ Rẫy">
-        <option value="Bệnh viện Đại học Y Dược">
-        <option value="Vũng Tàu">
-        <option value="Đà Lạt">
-        <option value="Cần Thơ">
-        <option value="Phan Thiết">
-        <option value="Tây Ninh">
-    </datalist>
 
     <div class="form-group"><label>SĐT/Tên Khách</label><input type="text" id="phone"></div>
     <div class="form-group"><label>Ghi chú</label><textarea id="note" rows="2"></textarea></div>
@@ -154,7 +135,6 @@
     const db = firebase.database();
     let trips = {};
 
-    // MỚI: Tự động lấy giá xăng đã lưu khi mở trang
     window.onload = function() {
         const savedGas = localStorage.getItem('userGasPrice');
         if (savedGas) {
@@ -172,7 +152,6 @@
         if (value !== "") { 
             let formatted = Number(value).toLocaleString('vi-VN');
             input.value = formatted;
-            // MỚI: Nếu người dùng gõ vào ô giá xăng thì lưu lại ngay
             if (input.id === 'gasPrice') {
                 localStorage.setItem('userGasPrice', formatted);
             }
@@ -226,49 +205,49 @@
     }
 
     function resetForm() {
-        const currentGas = document.getElementById('gasPrice').value; // MỚI: Giữ giá xăng hiện tại
+        const currentGas = document.getElementById('gasPrice').value; 
         document.getElementById('editKey').value = ''; 
         document.getElementById('mainBtn').innerText = "THÊM CHUYẾN"; 
         ['time', 'from', 'to', 'phone', 'note', 'price', 'km', 'road', 'hiredDriverName', 'hiredDriverPhone', 'driverCost'].forEach(id => document.getElementById(id).value = ''); 
-        document.getElementById('gasPrice').value = currentGas; // MỚI: Trả lại giá xăng vừa gõ
+        document.getElementById('gasPrice').value = currentGas; 
         document.getElementById('driverType').value = "Tài xế nhà"; 
         toggleDriverFields();
     }
 
-    // --- PHẦN XUẤT EXCEL GIỮ NGUYÊN ---
     function exportToExcel() {
-    const sortedKeys = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time));
-    if (!sortedKeys.length) { alert("Không có dữ liệu!"); return; }
-    const sortedData = sortedKeys.map(k => {
-        const t = trips[k];
-        const fuel = Math.round((t.km / 15) * (t.gasPrice || 24220));
-        const cost = fuel + Number(t.road) + Number(t.driverCost || 0);
-        return {
-            "Trạng Thái": t.status === "completed" ? "Xong" : "Chờ",
-            "Thời Gian": formatDateTime(t.time),
-            "Điểm Đi": t.from,
-            "Điểm Đến": t.to,
-            "Khách": t.phone,
-            "Số KM": t.km,
-            "Doanh Thu": t.price,
-            "Chi Phí": cost,
-            "Thực Lãi": t.price - cost,
-            "Ghi Chú": (t.note || "").replace(/\n/g, " ")
-        };
-    });
-    const worksheet = XLSX.utils.json_to_sheet(sortedData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const fileName = "Lich_Chay_Xe.xlsx";
-    if (window.navigator && window.navigator.msSaveOrOpenBlob) { window.navigator.msSaveOrOpenBlob(blob, fileName); } 
-    else { const a = document.createElement("a"); const url = URL.createObjectURL(blob); a.href = url; a.download = fileName; a.style.display = "none"; document.body.appendChild(a); a.click();
-        setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); alert("Đã xuất file Excel thành công!"); }, 500);
+        const sortedKeys = Object.keys(trips).sort((a, b) => new Date(trips[a].time) - new Date(trips[b].time));
+        if (!sortedKeys.length) { alert("Không có dữ liệu!"); return; }
+        const sortedData = sortedKeys.map(k => {
+            const t = trips[k];
+            const fuel = Math.round((t.km / 15) * (t.gasPrice || 24220));
+            const cost = fuel + Number(t.road) + Number(t.driverCost || 0);
+            return {
+                "Trạng Thái": t.status === "completed" ? "Xong" : "Chờ",
+                "Thời Gian": formatDateTime(t.time),
+                "Điểm Đi": t.from,
+                "Điểm Đến": t.to,
+                "Khách": t.phone,
+                "Số KM": t.km,
+                "Doanh Thu": t.price,
+                "Chi Phí": cost,
+                "Thực Lãi": t.price - cost,
+                "Ghi Chú": (t.note || "").replace(/\n/g, " ")
+            };
+        });
+        const worksheet = XLSX.utils.json_to_sheet(sortedData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Bao_Cao");
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        const fileName = "Lich_Chay_Xe.xlsx";
+        if (window.navigator && window.navigator.msSaveOrOpenBlob) { window.navigator.msSaveOrOpenBlob(blob, fileName); } 
+        else { const a = document.createElement("a"); const url = URL.createObjectURL(blob); a.href = url; a.download = fileName; a.style.display = "none"; document.body.appendChild(a); a.click();
+            setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); alert("Đã xuất file Excel thành công!"); }, 500);
+        }
     }
-}
 
     function deleteOldData() { if(confirm("Xoá dữ liệu tháng cũ?")) { const firstDay = "2026-05-01"; for (let key in trips) { if (trips[key].time < firstDay) db.ref('trips/' + key).remove(); } } }
 </script>
 </body>
 </html>
+
